@@ -12,7 +12,7 @@ tgt_cam_id=4
 
 python playground/demo.py \
   --model-id nvidia/difix_ref \
-  --root-dir /scratch/izar/cizinsky/thesis/preprocessing/hi4d_pair17_dance/lhm/evaluation/difix/epoch_0000 \
+  --root-dir /scratch/izar/cizinsky/thesis/results/hi4d_pair17_dance/evaluation/difix/epoch_0000 \
   --src-cam-id $src_cam_id \
   --tgt-cam-id $tgt_cam_id \
   --prompt "remove degradation" \
