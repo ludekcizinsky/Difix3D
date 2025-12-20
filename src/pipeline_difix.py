@@ -40,6 +40,7 @@ from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from diffusers.pipelines.stable_diffusion.pipeline_output import StableDiffusionPipelineOutput
 from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
 
+from .mv_unet import set_num_views_for_unet
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
@@ -181,6 +182,7 @@ class DifixPipeline(
         feature_extractor: CLIPImageProcessor,
         image_encoder: CLIPVisionModelWithProjection = None,
         requires_safety_checker: bool = True,
+        num_views: int = 2,
     ):
         super().__init__()
 
@@ -260,7 +262,9 @@ class DifixPipeline(
         )
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
         self.image_processor = VaeImageProcessor(vae_scale_factor=self.vae_scale_factor)
-        self.register_to_config(requires_safety_checker=requires_safety_checker)
+        self._num_views = int(num_views)
+        set_num_views_for_unet(self.unet, self._num_views)
+        self.register_to_config(requires_safety_checker=requires_safety_checker, num_views=self._num_views)
 
     def enable_vae_slicing(self):
         r"""
@@ -818,6 +822,16 @@ class DifixPipeline(
     @property
     def cross_attention_kwargs(self):
         return self._cross_attention_kwargs
+
+    @property
+    def num_views(self):
+        return self._num_views
+
+    def set_num_views(self, num_views: int) -> None:
+        self._num_views = int(num_views)
+        set_num_views_for_unet(self.unet, self._num_views)
+        if hasattr(self, "config"):
+            self.config.num_views = self._num_views
 
     @property
     def num_timesteps(self):

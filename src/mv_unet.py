@@ -72,7 +72,13 @@ def new_forward(
     # Notice that normalization is always applied before the real computation in the following blocks.
     # 0. Self-Attention
     
-    num_views = 2   # Assuming 2 views for simplicity, can be parameterized later
+    num_views = getattr(self, "num_views", 2)
+    if num_views <= 0:
+        raise ValueError(f"num_views must be >= 1, got {num_views}")
+    if hidden_states.shape[0] % num_views != 0:
+        raise ValueError(
+            f"hidden_states batch {hidden_states.shape[0]} is not divisible by num_views={num_views}"
+        )
     hidden_states = rearrange(hidden_states, "(b v) n d -> b (v n) d", v=num_views)
     batch_size = hidden_states.shape[0]
 
@@ -187,6 +193,23 @@ def new_forward(
 
 # Monkey-patch the class
 BasicTransformerBlock.forward = new_forward
+
+
+def set_num_views_for_unet(unet, num_views: int) -> None:
+    if num_views is None:
+        return
+    num_views = int(num_views)
+    # Ensure the dynamic version is active even if remote code monkey-patched it.
+    BasicTransformerBlock.forward = new_forward
+    for module in unet.modules():
+        if isinstance(module, BasicTransformerBlock):
+            module.num_views = num_views
+    if hasattr(unet, "config"):
+        try:
+            unet.config.num_views = num_views
+        except Exception:
+            pass
+    unet.num_views = num_views
 
 
 @dataclass
